@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+
+{% block title %}Search & Add Anime{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="bi bi-search"></i> Search & Add Anime
+                </h1>
+                <a href="{{ url_for('browse') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Browse
+                </a>
+            </div>
+
+            <!-- Search Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cloud-search"></i> Search Online Database
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-10">
+                            <input type="text" id="searchInput" class="form-control" 
+                                   placeholder="Search for anime titles (e.g., Attack on Titan, Naruto, Death Note)...">
+                        </div>
+                        <div class="col-md-2">
+                            <button id="searchBtn" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        <i class="bi bi-info-circle"></i> Search the MyAnimeList database for anime to add to our collection
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Suggestions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Quick Suggestions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button id="popularBtn" class="btn btn-success w-100 mb-2">
+                                <i class="bi bi-star"></i> Popular Anime
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button id="seasonalBtn" class="btn btn-info w-100 mb-2">
+                                <i class="bi bi-calendar"></i> This Season's Anime
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="text-center py-4" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Searching anime database...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list"></i> Search Results
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultsContainer" class="row">
+                            <!-- Results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Anime Details Modal -->
+<div class="modal fade" id="animeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="animeModalTitle">Anime Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="animeModalBody">
+                <!-- Anime details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="addToWatchlistBtn" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add to Watchlist
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.anime-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.anime-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.anime-image {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.anime-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    height: 2.4em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.anime-info {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.score-badge {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    font-weight: bold;
+}
+
+.episodes-badge {
+    background-color: #6f42c1;
+    color: white;
+}
+
+.year-badge {
+    background-color: #fd7e14;
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const popularBtn = document.getElementById('popularBtn');
+    const seasonalBtn = document.getElementById('seasonalBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsContainer = document.getElementById('resultsContainer');
+    
+    let currentAnimeData = null;
+
+    // Search functionality
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+
+    // Quick suggestions
+    popularBtn.addEventListener('click', () => loadPopularAnime());
+    seasonalBtn.addEventListener('click', () => loadSeasonalAnime());
+
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (!query) {
+            alert('Please enter a search query');
+            return;
+        }
+
+        showLoading();
+        
+        fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.results);
+                } else {
+                    throw new Error(data.error || 'Search failed');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Search failed: ' + error.message);
+            });
+    }
+
+    function loadPopularAnime() {
+        showLoading();
+        
+        fetch('/api/popular?limit=20')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.results);
+                } else {
+                    throw new Error(data.error || 'Failed to load popular anime');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Failed to load popular anime: ' + error.message);
+            });
+    }
+
+    function loadSeasonalAnime() {
+        showLoading();
+        
+        fetch('/api/seasonal')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.results);
+                } else {
+                    throw new Error(data.error || 'Failed to load seasonal anime');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Failed to load seasonal anime: ' + error.message);
+            });
+    }
+
+    function displayResults(results) {
+        resultsContainer.innerHTML = '';
+        
+        if (results.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info text-center">
+                        <i class="bi bi-info-circle"></i> No anime found. Try a different search term.
+                    </div>
+                </div>
+            `;
+        } else {
+            results.forEach(anime => {
+                const card = createAnimeCard(anime);
+                resultsContainer.appendChild(card);
+            });
+        }
+        
+        hideLoading();
+        resultsSection.style.display = 'block';
+        resultsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function createAnimeCard(anime) {
+        const col = document.createElement('div');
+        col.className = 'col-lg-3 col-md-4 col-sm-6 mb-4';
+        
+        const imageUrl = anime.image_url || 'https://via.placeholder.com/300x400/6c757d/ffffff?text=No+Image';
+        const year = anime.year || 'Unknown';
+        const episodes = anime.total_episodes || '?';
+        const score = anime.score ? anime.score.toFixed(1) : 'N/A';
+        const description = anime.description ? 
+            (anime.description.length > 100 ? anime.description.substring(0, 100) + '...' : anime.description) : 
+            'No description available';
+        
+        col.innerHTML = `
+            <div class="anime-card p-3">
+                <div class="text-center mb-3">
+                    <img src="${imageUrl}" alt="${anime.title}" class="anime-image">
+                </div>
+                <div class="anime-title mb-2">${anime.title}</div>
+                <div class="anime-info mb-3">
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <span class="badge score-badge">${score} ⭐</span>
+                        <span class="badge episodes-badge">${episodes} eps</span>
+                        <span class="badge year-badge">${year}</span>
+                    </div>
+                    ${anime.genre ? `<small class="d-block mb-1"><strong>Genre:</strong> ${anime.genre}</small>` : ''}
+                    <small class="text-muted">${description}</small>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-sm view-details" data-mal-id="${anime.mal_id}">
+                        <i class="bi bi-eye"></i> View Details
+                    </button>
+                    <button class="btn btn-success btn-sm quick-add" data-mal-id="${anime.mal_id}">
+                        <i class="bi bi-plus-circle"></i> Quick Add
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        const viewDetailsBtn = col.querySelector('.view-details');
+        const quickAddBtn = col.querySelector('.quick-add');
+        
+        viewDetailsBtn.addEventListener('click', () => showAnimeDetails(anime.mal_id));
+        quickAddBtn.addEventListener('click', () => quickAddAnime(anime.mal_id));
+        
+        return col;
+    }
+
+    function showAnimeDetails(malId) {
+        fetch(`/api/anime-details/${malId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentAnimeData = data.anime;
+                    displayAnimeModal(data.anime);
+                } else {
+                    throw new Error(data.error || 'Failed to load anime details');
+                }
+            })
+            .catch(error => {
+                alert('Failed to load anime details: ' + error.message);
+            });
+    }
+
+    function displayAnimeModal(anime) {
+        const modal = document.getElementById('animeModal');
+        const title = document.getElementById('animeModalTitle');
+        const body = document.getElementById('animeModalBody');
+        const addBtn = document.getElementById('addToWatchlistBtn');
+        
+        title.textContent = anime.title;
+        
+        const imageUrl = anime.image_url || 'https://via.placeholder.com/300x400/6c757d/ffffff?text=No+Image';
+        const score = anime.score ? anime.score.toFixed(1) : 'N/A';
+        const year = anime.year || 'Unknown';
+        const episodes = anime.total_episodes || '?';
+        const status = anime.status || 'Unknown';
+        const type = anime.type || 'Unknown';
+        const source = anime.source || 'Unknown';
+        const duration = anime.duration || 'Unknown';
+        const rating = anime.rating || 'Unknown';
+        
+        body.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <img src="${imageUrl}" alt="${anime.title}" class="img-fluid rounded">
+                </div>
+                <div class="col-md-8">
+                    <h5>${anime.title}</h5>
+                    ${anime.title_english && anime.title_english !== anime.title ? `<p class="text-muted">${anime.title_english}</p>` : ''}
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <strong>Score:</strong> ${score} ⭐<br>
+                            <strong>Year:</strong> ${year}<br>
+                            <strong>Episodes:</strong> ${episodes}<br>
+                            <strong>Status:</strong> ${status}
+                        </div>
+                        <div class="col-6">
+                            <strong>Type:</strong> ${type}<br>
+                            <strong>Source:</strong> ${source}<br>
+                            <strong>Duration:</strong> ${duration}<br>
+                            <strong>Rating:</strong> ${rating}
+                        </div>
+                    </div>
+                    
+                    ${anime.genre ? `<p><strong>Genres:</strong> ${anime.genre}</p>` : ''}
+                    
+                    ${anime.description ? `
+                        <div>
+                            <strong>Synopsis:</strong>
+                            <p class="mt-2">${anime.description}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        // Update add button
+        if (anime.in_database) {
+            addBtn.innerHTML = '<i class="bi bi-check-circle"></i> Already in Database';
+            addBtn.disabled = true;
+            addBtn.className = 'btn btn-success';
+        } else {
+            addBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Add to Database & Watchlist';
+            addBtn.disabled = false;
+            addBtn.className = 'btn btn-primary';
+            addBtn.onclick = () => addAnimeToDatabase(anime.mal_id);
+        }
+        
+        const bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+    }
+
+    function quickAddAnime(malId) {
+        const btn = document.querySelector(`[data-mal-id="${malId}"].quick-add`);
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
+        btn.disabled = true;
+        
+        fetch(`/api/import/${malId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Added!';
+                    btn.className = 'btn btn-success btn-sm quick-add';
+                    
+                    // Show success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+                    alert.innerHTML = `
+                        <strong>Success!</strong> ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.body.appendChild(alert);
+                    
+                    setTimeout(() => {
+                        if (alert.parentNode) {
+                            alert.parentNode.removeChild(alert);
+                        }
+                    }, 5000);
+                } else {
+                    throw new Error(data.error || 'Failed to add anime');
+                }
+            })
+            .catch(error => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                alert('Failed to add anime: ' + error.message);
+            });
+    }
+
+    function addAnimeToDatabase(malId) {
+        const btn = document.getElementById('addToWatchlistBtn');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
+        btn.disabled = true;
+        
+        fetch(`/api/import/${malId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Added Successfully!';
+                    btn.className = 'btn btn-success';
+                    
+                    // Close modal after 2 seconds
+                    setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('animeModal'));
+                        modal.hide();
+                    }, 2000);
+                } else {
+                    throw new Error(data.error || 'Failed to add anime');
+                }
+            })
+            .catch(error => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.className = 'btn btn-primary';
+                alert('Failed to add anime: ' + error.message);
+            });
+    }
+
+    function showLoading() {
+        loadingIndicator.style.display = 'block';
+        resultsSection.style.display = 'none';
+    }
+
+    function hideLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

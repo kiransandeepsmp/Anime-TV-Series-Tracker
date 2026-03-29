@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}{{ discussion.title }} - Discussion{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('browse') }}">Browse</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('anime_discussions', anime_id=discussion.anime.id) }}">{{ discussion.anime.title }} Discussions</a></li>
+                    <li class="breadcrumb-item active">{{ discussion.title[:50] }}{% if discussion.title|length > 50 %}...{% endif %}</li>
+                </ol>
+            </nav>
+
+            <!-- Discussion Post -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h1 class="h3 mb-3">
+                        {{ discussion.title }}
+                        {% if discussion.is_spoiler %}
+                        <span class="badge bg-warning text-dark ms-2">
+                            <i class="bi bi-exclamation-triangle"></i> Spoiler
+                        </span>
+                        {% endif %}
+                    </h1>
+                    
+                    <div class="d-flex align-items-center mb-3 text-muted">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <strong class="me-3">{{ discussion.user.username }}</strong>
+                        <i class="bi bi-clock me-1"></i>
+                        <span class="me-3">{{ discussion.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                        <i class="bi bi-chat me-1"></i>
+                        <span>{{ discussion.get_comment_count() }} comments</span>
+                    </div>
+                    
+                    <div class="discussion-content">
+                        {% if discussion.is_spoiler %}
+                        <div class="spoiler-warning alert alert-warning" id="spoilerWarning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Spoiler Warning!</strong> This discussion contains spoilers. 
+                            <button class="btn btn-sm btn-outline-warning ms-2" onclick="toggleSpoiler()">
+                                Show Content
+                            </button>
+                        </div>
+                        <div class="spoiler-content d-none" id="spoilerContent">
+                            {{ discussion.content | nl2br }}
+                        </div>
+                        {% else %}
+                        {{ discussion.content | nl2br }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-chat-left-text"></i> 
+                        Comments ({{ discussion.get_comment_count() }})
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Add Comment Form -->
+                    {% if current_user.is_authenticated %}
+                    <form method="POST" action="{{ url_for('add_comment', discussion_id=discussion.id) }}" class="mb-4">
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Add a comment</label>
+                            <textarea class="form-control" id="content" name="content" rows="3" 
+                                      placeholder="Share your thoughts..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_spoiler" name="is_spoiler">
+                                <label class="form-check-label" for="is_spoiler">
+                                    <i class="bi bi-exclamation-triangle text-warning"></i>
+                                    This comment contains spoilers
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Post Comment
+                        </button>
+                    </form>
+                    <hr>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <a href="{{ url_for('login') }}">Login</a> to join the discussion and post comments.
+                    </div>
+                    {% endif %}
+
+                    <!-- Comments List -->
+                    {% if comments.items %}
+                    {% for comment in comments.items %}
+                    <div class="comment mb-3 pb-3 border-bottom">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 40px; height: 40px;">
+                                    {{ comment.user.username[0].upper() }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <strong class="me-3">{{ comment.user.username }}</strong>
+                                    <small class="text-muted">
+                                        {{ comment.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                                    </small>
+                                    {% if comment.is_spoiler %}
+                                    <span class="badge bg-warning text-dark ms-2">
+                                        <i class="bi bi-exclamation-triangle"></i> Spoiler
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div class="comment-content">
+                                    {% if comment.is_spoiler %}
+                                    <div class="spoiler-warning alert alert-warning alert-sm" id="commentSpoilerWarning{{ comment.id }}">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        <small>This comment contains spoilers.</small>
+                                        <button class="btn btn-sm btn-outline-warning ms-2" onclick="toggleCommentSpoiler({{ comment.id }})">
+                                            Show
+                                        </button>
+                                    </div>
+                                    <div class="spoiler-content d-none" id="commentSpoilerContent{{ comment.id }}">
+                                        {{ comment.content | nl2br }}
+                                    </div>
+                                    {% else %}
+                                    {{ comment.content | nl2br }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <!-- Comments Pagination -->
+                    {% if comments.pages > 1 %}
+                    <nav aria-label="Comments pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if comments.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('view_discussion', discussion_id=discussion.id, page=comments.prev_num) }}">
+                                    Previous
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in comments.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != comments.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('view_discussion', discussion_id=discussion.id, page=page_num) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if comments.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('view_discussion', discussion_id=discussion.id, page=comments.next_num) }}">
+                                    Next
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="bi bi-chat-square"></i> No comments yet. Be the first to comment!
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">About This Anime</h5>
+                </div>
+                <div class="card-body">
+                    <img src="{{ discussion.anime.image_url or '/static/images/placeholder.jpg' }}" 
+                         class="img-fluid rounded mb-3" alt="{{ discussion.anime.title }}">
+                    <h6>{{ discussion.anime.title }}</h6>
+                    <p class="text-muted small">{{ discussion.anime.genre }} • {{ discussion.anime.year }}</p>
+                    <p class="small">{{ discussion.anime.description[:150] }}...</p>
+                    <a href="{{ url_for('anime_discussions', anime_id=discussion.anime.id) }}" 
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-chat-square-text"></i> All Discussions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleSpoiler() {
+    const warning = document.getElementById('spoilerWarning');
+    const content = document.getElementById('spoilerContent');
+    warning.classList.add('d-none');
+    content.classList.remove('d-none');
+}
+
+function toggleCommentSpoiler(commentId) {
+    const warning = document.getElementById('commentSpoilerWarning' + commentId);
+    const content = document.getElementById('commentSpoilerContent' + commentId);
+    warning.classList.add('d-none');
+    content.classList.remove('d-none');
+}
+
+// Auto-resize comment textarea
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('content');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+    }
+});
+</script>
+{% endblock %}

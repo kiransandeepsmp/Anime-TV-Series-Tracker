@@ -1,0 +1,248 @@
+ {% extends "base.html" %}
+
+{% block title %}Browse Anime - Anime Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-6">Browse Anime</h1>
+                <div class="alert alert-info mb-4">
+                    <h5><i class="bi bi-cloud-plus"></i> Add New Anime</h5>
+                    <p>This application uses the MyAnimeList API for anime data. To add new anime:</p>
+                    <a href="{{ url_for('api.search_and_add') }}" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Search & Add from MyAnimeList
+                    </a>
+                </div>
+                
+            <p class="lead text-muted">Discover your next favorite anime</p>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <form method="GET" class="row g-3">
+                <!-- Search -->
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="search"
+                           placeholder="Search anime titles..." value="{{ current_search }}">
+                </div>
+
+                <!-- Genre Filter -->
+                <div class="col-md-2">
+                    <select class="form-select" name="genre">
+                        <option value="">All Genres</option>
+                        {% for genre in available_genres %}
+                        <option value="{{ genre }}" {{ 'selected' if current_genre == genre else '' }}>{{ genre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Year Filter -->
+                <div class="col-md-2">
+                    <select class="form-select" name="year">
+                        <option value="">All Years</option>
+                        {% for year in available_years %}
+                        <option value="{{ year }}" {{ 'selected' if current_year == year else '' }}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Sort -->
+                <div class="col-md-2">
+                    <select class="form-select" name="sort">
+                        <option value="title" {{ 'selected' if current_sort == 'title' else '' }}>Sort by Title</option>
+                        <option value="year" {{ 'selected' if current_sort == 'year' else '' }}>Sort by Year</option>
+                        <option value="rating" {{ 'selected' if current_sort == 'rating' else '' }}>Sort by Rating</option>
+                    </select>
+                </div>
+
+                <!-- Search Button -->
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Filters Display -->
+    {% if current_search or current_genre or current_year %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="text-muted">Active filters:</span>
+                {% if current_search %}
+                <span class="badge bg-primary">Search: "{{ current_search }}"</span>
+                {% endif %}
+                {% if current_genre %}
+                <span class="badge bg-info">Genre: {{ current_genre }}</span>
+                {% endif %}
+                {% if current_year %}
+                <span class="badge bg-warning">Year: {{ current_year }}</span>
+                {% endif %}
+                <a href="{{ url_for('browse') }}" class="btn btn-sm btn-outline-secondary">Clear All</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Anime Grid -->
+    <div class="row">
+        {% if anime_list.items %}
+            {% for anime in anime_list.items %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="card anime-card h-100">
+                    <img src="{{ anime.image_url or '/static/images/placeholder.jpg' }}" 
+                         class="card-img-top anime-image" alt="{{ anime.title }}">
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title">{{ anime.title }}</h6>
+                        <p class="card-text text-muted small">{{ anime.genre }} • {{ anime.year }}</p>
+                        <p class="card-text flex-grow-1">{{ anime.description[:80] }}...</p>
+                        
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">{{ anime.total_episodes }} episodes</small>
+                                <div class="rating-stars">
+                                    {% set avg_rating = anime.get_average_rating() %}
+                                    {% if avg_rating > 0 %}
+                                        {% for i in range(1, 6) %}
+                                            <i class="bi bi-star{{ '-fill' if i <= (avg_rating/2) else '-half' if i <= (avg_rating/2 + 0.5) else '' }}"></i>
+                                        {% endfor %}
+                                        <small class="text-muted">({{ "%.1f"|format(avg_rating) }})</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if current_user.is_authenticated %}
+                            <form method="POST" action="{{ url_for('add_to_watchlist') }}">
+                                <input type="hidden" name="anime_id" value="{{ anime.id }}">
+                                <div class="row g-2">
+                                    <div class="col-8">
+                                        <select name="status" class="form-select form-select-sm">
+                                            <option value="plan_to_watch">Plan to Watch</option>
+                                            <option value="watching">Watching</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="on_hold">On Hold</option>
+                                            <option value="dropped">Dropped</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="mt-2">
+                                <a href="{{ url_for('anime_discussions', anime_id=anime.id) }}"
+                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="bi bi-chat-square-text"></i> Discussions
+                                </a>
+                            </div>
+                            {% else %}
+                            <div class="text-center mb-2">
+                                <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-sm">
+                                    Login to Add
+                                </a>
+                            </div>
+                            <div class="text-center">
+                                <a href="{{ url_for('anime_discussions', anime_id=anime.id) }}"
+                                   class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-chat-square-text"></i> Discussions
+                                </a>
+                            </div>
+                            {% endif %}
+
+                            <!-- Streaming Links -->
+                            {% set streaming_links = anime.get_streaming_links() %}
+                            {% if streaming_links %}
+                            <div class="mt-2">
+                                <small class="text-muted d-block mb-1">Watch on:</small>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for platform, url in streaming_links.items() %}
+                                    <a href="{{ url }}" target="_blank" rel="noopener"
+                                       class="badge bg-primary text-decoration-none"
+                                       title="Watch on {{ platform }}">
+                                        {{ platform }}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="bi bi-search display-1 text-muted"></i>
+                    <h3 class="mt-3">No anime found</h3>
+                    <p class="text-muted">
+                        {% if current_search %}
+                            No results found for "{{ current_search }}". Try a different search term.
+                        {% else %}
+                            No anime available at the moment.
+                        {% endif %}
+                    </p>
+                    {% if current_search %}
+                    <a href="{{ url_for('browse') }}" class="btn btn-primary">Clear Search</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if anime_list.pages > 1 %}
+    <div class="row">
+        <div class="col">
+            <nav aria-label="Anime pagination">
+                <ul class="pagination justify-content-center">
+                    {% if anime_list.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('browse', page=anime_list.prev_num, search=current_search) }}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in anime_list.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != anime_list.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('browse', page=page_num, search=current_search) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if anime_list.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('browse', page=anime_list.next_num, search=current_search) }}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}All Discussions - Anime Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-6">Community Discussions</h1>
+            <p class="lead text-muted">Join the conversation about your favorite anime and series</p>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="search" class="form-label">Search Discussions</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ current_search }}" placeholder="Search by title...">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="anime" class="form-label">Filter by Anime</label>
+                            <select class="form-select" id="anime" name="anime">
+                                <option value="">All Anime</option>
+                                {% for anime in anime_list %}
+                                <option value="{{ anime.id }}" {% if current_anime == anime.id %}selected{% endif %}>
+                                    {{ anime.title }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discussions List -->
+    {% if discussions.items %}
+    <div class="row">
+        <div class="col">
+            {% for discussion in discussions.items %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2 text-center">
+                            <img src="{{ discussion.anime.image_url or '/static/images/placeholder.jpg' }}" 
+                                 class="img-fluid rounded" style="max-height: 100px; object-fit: cover;" 
+                                 alt="{{ discussion.anime.title }}">
+                        </div>
+                        <div class="col-md-10">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h5 class="card-title mb-1">
+                                        <a href="{{ url_for('view_discussion', discussion_id=discussion.id) }}" 
+                                           class="text-decoration-none">
+                                            {{ discussion.title }}
+                                        </a>
+                                        {% if discussion.is_spoiler %}
+                                        <span class="badge bg-warning text-dark ms-2">
+                                            <i class="bi bi-exclamation-triangle"></i> Spoiler
+                                        </span>
+                                        {% endif %}
+                                    </h5>
+                                    <p class="text-muted small mb-2">
+                                        <a href="{{ url_for('anime_discussions', anime_id=discussion.anime.id) }}" 
+                                           class="text-decoration-none">
+                                            {{ discussion.anime.title }}
+                                        </a>
+                                        • {{ discussion.anime.genre }}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <p class="card-text">
+                                {{ discussion.content[:200] }}{% if discussion.content|length > 200 %}...{% endif %}
+                            </p>
+                            
+                            <div class="d-flex align-items-center text-muted small">
+                                <i class="bi bi-person me-1"></i>
+                                <span class="me-3">{{ discussion.user.username }}</span>
+                                <i class="bi bi-clock me-1"></i>
+                                <span class="me-3">{{ discussion.created_at.strftime('%b %d, %Y') }}</span>
+                                <i class="bi bi-chat me-1"></i>
+                                <span class="me-3">{{ discussion.get_comment_count() }} comments</span>
+                                {% if discussion.updated_at != discussion.created_at %}
+                                <i class="bi bi-arrow-clockwise me-1"></i>
+                                <span>Updated {{ discussion.updated_at.strftime('%b %d') }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Pagination -->
+            {% if discussions.pages > 1 %}
+            <nav aria-label="Discussions pagination">
+                <ul class="pagination justify-content-center">
+                    {% if discussions.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('all_discussions', page=discussions.prev_num, search=current_search, anime=current_anime) }}">
+                            Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in discussions.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != discussions.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('all_discussions', page=page_num, search=current_search, anime=current_anime) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if discussions.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('all_discussions', page=discussions.next_num, search=current_search, anime=current_anime) }}">
+                            Next
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-chat-square-text display-1 text-muted"></i>
+        <h3 class="mt-3">No discussions found</h3>
+        {% if current_search or current_anime %}
+        <p class="text-muted">Try adjusting your search criteria or browse all discussions.</p>
+        <a href="{{ url_for('all_discussions') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Show All Discussions
+        </a>
+        {% else %}
+        <p class="text-muted">Be the first to start a discussion!</p>
+        <a href="{{ url_for('browse') }}" class="btn btn-primary">
+            <i class="bi bi-search"></i> Browse Anime
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Quick Stats -->
+    {% if discussions.items %}
+    <div class="row mt-5">
+        <div class="col">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5 class="text-primary">{{ discussions.total }}</h5>
+                            <small class="text-muted">Total Discussions</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="text-success">{{ anime_list|length }}</h5>
+                            <small class="text-muted">Anime with Discussions</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 class="text-info">Active</h5>
+                            <small class="text-muted">Community Status</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form when anime filter changes
+    const animeSelect = document.getElementById('anime');
+    animeSelect.addEventListener('change', function() {
+        this.form.submit();
+    });
+    
+    // Clear search functionality
+    const searchInput = document.getElementById('search');
+    if (searchInput.value) {
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'btn btn-outline-secondary btn-sm ms-2';
+        clearBtn.innerHTML = '<i class="bi bi-x"></i>';
+        clearBtn.onclick = function() {
+            searchInput.value = '';
+            searchInput.form.submit();
+        };
+        searchInput.parentNode.appendChild(clearBtn);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Anime Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-6">
+                <i class="bi bi-shield-check text-danger"></i> Admin Dashboard
+            </h1>
+            <p class="lead text-muted">Manage users, content, and monitor site activity</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_users }}</h4>
+                            <p class="mb-0">Total Users</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-people display-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('admin_users') }}" class="text-white text-decoration-none">
+                        <small>View all users <i class="bi bi-arrow-right"></i></small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_anime }}</h4>
+                            <p class="mb-0">Anime Entries</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-play-circle display-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('admin_anime') }}" class="text-white text-decoration-none">
+                        <small>Manage anime <i class="bi bi-arrow-right"></i></small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_discussions }}</h4>
+                            <p class="mb-0">Discussions</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-chat-square-text display-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('admin_discussions') }}" class="text-white text-decoration-none">
+                        <small>View discussions <i class="bi bi-arrow-right"></i></small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_watchlist_items }}</h4>
+                            <p class="mb-0">Watchlist Items</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-list-check display-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <small>Total entries across all users</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-6 mb-3">
+                            <a href="{{ url_for('admin_add_anime') }}" class="btn btn-success w-100">
+                                <i class="bi bi-plus-circle d-block mb-1"></i>
+                                Add Anime
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-primary w-100">
+                                <i class="bi bi-people d-block mb-1"></i>
+                                Manage Users
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <a href="{{ url_for('admin_discussions') }}" class="btn btn-info w-100">
+                                <i class="bi bi-chat-square-text d-block mb-1"></i>
+                                View Discussions
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <a href="{{ url_for('browse') }}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-eye d-block mb-1"></i>
+                                View Site
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-plus"></i> Recent Users
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_users %}
+                    <div class="list-group list-group-flush">
+                        {% for user in recent_users %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ user.username }}</strong>
+                                <br>
+                                <small class="text-muted">{{ user.email }}</small>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">
+                                    {{ user.created_at.strftime('%b %d, %Y') }}
+                                </small>
+                                {% if user.is_admin %}
+                                <br>
+                                <span class="badge bg-danger">Admin</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3">No recent users</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-chat-left-text"></i> Recent Discussions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_discussions %}
+                    <div class="list-group list-group-flush">
+                        {% for discussion in recent_discussions %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">
+                                        <a href="{{ url_for('view_discussion', discussion_id=discussion.id) }}" 
+                                           class="text-decoration-none">
+                                            {{ discussion.title[:50] }}{% if discussion.title|length > 50 %}...{% endif %}
+                                        </a>
+                                        {% if discussion.is_spoiler %}
+                                        <span class="badge bg-warning text-dark">Spoiler</span>
+                                        {% endif %}
+                                    </h6>
+                                    <p class="mb-1 small text-muted">
+                                        {{ discussion.anime.title }} • by {{ discussion.user.username }}
+                                    </p>
+                                    <small class="text-muted">
+                                        {{ discussion.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3">No recent discussions</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="row">
+        <div class="col">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-shield-check"></i> Admin Panel • 
+                        Logged in as: <strong>{{ current_user.username }}</strong> • 
+                        <a href="{{ url_for('index') }}" class="text-decoration-none">Back to Site</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

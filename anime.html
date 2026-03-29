@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Anime - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Admin</a></li>
+                    <li class="breadcrumb-item active">Anime Management</li>
+                </ol>
+            </nav>
+            
+            <h1 class="display-6">
+                <i class="bi bi-film text-primary"></i> Anime Management
+            </h1>
+            <p class="lead text-muted">Manage anime database and content</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-film fs-1 mb-2"></i>
+                    <h3>{{ anime_list.total }}</h3>
+                    <p class="mb-0">Total Anime</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-database fs-1 mb-2"></i>
+                    <h3>
+                        {% set api_count = 0 %}
+                        {% for anime in anime_list.items %}
+                            {% if anime.mal_id %}
+                                {% set api_count = api_count + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ api_count }}
+                    </h3>
+                    <p class="mb-0">API Sourced</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-star fs-1 mb-2"></i>
+                    <h3>
+                        {% set rated_count = 0 %}
+                        {% for anime in anime_list.items %}
+                            {% if anime.score %}
+                                {% set rated_count = rated_count + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ rated_count }}
+                    </h3>
+                    <p class="mb-0">With Ratings</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar fs-1 mb-2"></i>
+                    <h3>
+                        {% set recent_count = 0 %}
+                        {% for anime in anime_list.items %}
+                            {% if anime.year and anime.year >= 2020 %}
+                                {% set recent_count = recent_count + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ recent_count }}
+                    </h3>
+                    <p class="mb-0">Recent (2020+)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <!-- Search Form -->
+                            <form method="GET" class="d-flex">
+                                <input type="text" name="search" class="form-control me-2" 
+                                       placeholder="Search anime..." value="{{ current_search }}">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                {% if current_search %}
+                                <a href="{{ url_for('admin_anime') }}" class="btn btn-outline-secondary ms-2">
+                                    <i class="bi bi-x"></i>
+                                </a>
+                                {% endif %}
+                            </form>
+                        </div>
+                        <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                            <!-- Action Buttons -->
+                            <a href="{{ url_for('api.search_and_add') }}" class="btn btn-success">
+                                <i class="bi bi-cloud-plus"></i> Add from API
+                            </a>
+                            <a href="{{ url_for('api.api_browser') }}" class="btn btn-info">
+                                <i class="bi bi-cloud-download"></i> API Browser
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results Info -->
+    {% if current_search %}
+    <div class="row mb-3">
+        <div class="col">
+            <div class="alert alert-info">
+                <i class="bi bi-search"></i> 
+                Showing results for "<strong>{{ current_search }}</strong>" 
+                ({{ anime_list.total }} found)
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Anime List -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list"></i> Anime Database
+                    </h5>
+                    <small class="text-muted">
+                        Page {{ anime_list.page }} of {{ anime_list.pages }} 
+                        ({{ anime_list.total }} total)
+                    </small>
+                </div>
+                <div class="card-body p-0">
+                    {% if anime_list.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Anime</th>
+                                    <th>Genre</th>
+                                    <th>Year</th>
+                                    <th>Episodes</th>
+                                    <th>Source</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for anime in anime_list.items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ anime.image_url or '/static/images/placeholder.jpg' }}" 
+                                                 class="rounded me-3" style="width: 50px; height: 70px; object-fit: cover;" 
+                                                 alt="{{ anime.title }}">
+                                            <div>
+                                                <h6 class="mb-1">{{ anime.title }}</h6>
+                                                {% if anime.title_english and anime.title_english != anime.title %}
+                                                <small class="text-muted">{{ anime.title_english }}</small>
+                                                {% endif %}
+                                                {% if anime.score %}
+                                                <div class="mt-1">
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="bi bi-star-fill"></i> {{ anime.score }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if anime.genre %}
+                                        <small class="text-muted">{{ anime.genre[:30] }}{% if anime.genre|length > 30 %}...{% endif %}</small>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if anime.year %}
+                                        <span class="badge bg-secondary">{{ anime.year }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ anime.total_episodes or '?' }}</span>
+                                    </td>
+                                    <td>
+                                        {% if anime.mal_id %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-cloud-check"></i> API
+                                        </span>
+                                        <br><small class="text-muted">MAL: {{ anime.mal_id }}</small>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-pencil"></i> Manual
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('anime_detail', anime_id=anime.id) }}" 
+                                               class="btn btn-outline-primary" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            {% if anime.mal_id %}
+                                            <a href="https://myanimelist.net/anime/{{ anime.mal_id }}" 
+                                               target="_blank" class="btn btn-outline-info" title="View on MAL">
+                                                <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-film text-muted" style="font-size: 4rem;"></i>
+                        <h4 class="text-muted mt-3">No Anime Found</h4>
+                        {% if current_search %}
+                        <p class="text-muted">No anime match your search criteria.</p>
+                        <a href="{{ url_for('admin_anime') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left"></i> View All Anime
+                        </a>
+                        {% else %}
+                        <p class="text-muted">Start by adding anime from the MyAnimeList API.</p>
+                        <a href="{{ url_for('api.search_and_add') }}" class="btn btn-success">
+                            <i class="bi bi-cloud-plus"></i> Add Anime from API
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if anime_list.pages > 1 %}
+    <div class="row mt-4">
+        <div class="col">
+            <nav aria-label="Anime pagination">
+                <ul class="pagination justify-content-center">
+                    {% if anime_list.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin_anime', page=anime_list.prev_num, search=current_search) }}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in anime_list.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != anime_list.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_anime', page=page_num, search=current_search) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if anime_list.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin_anime', page=anime_list.next_num, search=current_search) }}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- API Notice -->
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        This application uses the MyAnimeList API for anime data. 
+                        All new anime should be added through the API to ensure data quality and consistency.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}API Browser - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="bi bi-cloud-download"></i> API Browser & Import
+                </h1>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Admin
+                </a>
+            </div>
+
+            <!-- Search Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-search"></i> Search Anime APIs
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" id="searchInput" class="form-control" 
+                                   placeholder="Search for anime titles...">
+                        </div>
+                        <div class="col-md-2">
+                            <select id="searchLimit" class="form-select">
+                                <option value="10">10 results</option>
+                                <option value="15">15 results</option>
+                                <option value="25">25 results</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button id="searchBtn" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning"></i> Quick Import
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <button id="popularBtn" class="btn btn-success w-100 mb-2">
+                                <i class="bi bi-star"></i> Load Popular Anime
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button id="seasonalBtn" class="btn btn-info w-100 mb-2">
+                                <i class="bi bi-calendar"></i> Load Seasonal Anime
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button id="bulkImportBtn" class="btn btn-warning w-100 mb-2" disabled>
+                                <i class="bi bi-download"></i> Bulk Import Selected
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="text-center py-4" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Fetching anime data...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" style="display: none;">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list"></i> Search Results
+                        </h5>
+                        <div>
+                            <button id="selectAllBtn" class="btn btn-sm btn-outline-primary me-2">
+                                Select All
+                            </button>
+                            <button id="clearSelectionBtn" class="btn btn-sm btn-outline-secondary">
+                                Clear Selection
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultsContainer" class="row">
+                            <!-- Results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Status Modal -->
+            <div class="modal fade" id="importModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Import Status</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="importProgress" class="mb-3">
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div id="importResults">
+                                <!-- Import results will be shown here -->
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.anime-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.anime-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.anime-card.selected {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.anime-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.anime-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+    height: 2.4em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.anime-info {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.status-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const searchLimit = document.getElementById('searchLimit');
+    const popularBtn = document.getElementById('popularBtn');
+    const seasonalBtn = document.getElementById('seasonalBtn');
+    const bulkImportBtn = document.getElementById('bulkImportBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+    
+    let selectedAnime = new Set();
+    let currentResults = [];
+
+    // Search functionality
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+
+    // Quick actions
+    popularBtn.addEventListener('click', () => loadPopularAnime());
+    seasonalBtn.addEventListener('click', () => loadSeasonalAnime());
+    bulkImportBtn.addEventListener('click', () => performBulkImport());
+
+    // Selection controls
+    selectAllBtn.addEventListener('click', selectAll);
+    clearSelectionBtn.addEventListener('click', clearSelection);
+
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (!query) {
+            alert('Please enter a search query');
+            return;
+        }
+
+        showLoading();
+        
+        fetch(`/api/search?q=${encodeURIComponent(query)}&limit=${searchLimit.value}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.results, 'Search Results');
+                } else {
+                    throw new Error(data.error || 'Search failed');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Search failed: ' + error.message);
+            });
+    }
+
+    function loadPopularAnime() {
+        showLoading();
+        
+        fetch('/api/popular?limit=25')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.results, 'Popular Anime');
+                } else {
+                    throw new Error(data.error || 'Failed to load popular anime');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Failed to load popular anime: ' + error.message);
+            });
+    }
+
+    function loadSeasonalAnime() {
+        showLoading();
+        
+        fetch('/api/seasonal')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.results, 'Seasonal Anime');
+                } else {
+                    throw new Error(data.error || 'Failed to load seasonal anime');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('Failed to load seasonal anime: ' + error.message);
+            });
+    }
+
+    function displayResults(results, title) {
+        currentResults = results;
+        selectedAnime.clear();
+        updateBulkImportButton();
+        
+        resultsContainer.innerHTML = '';
+        
+        results.forEach(anime => {
+            const card = createAnimeCard(anime);
+            resultsContainer.appendChild(card);
+        });
+        
+        hideLoading();
+        resultsSection.style.display = 'block';
+        resultsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function createAnimeCard(anime) {
+        const col = document.createElement('div');
+        col.className = 'col-md-3 col-sm-6 mb-4';
+        
+        const imageUrl = anime.image_url || 'https://via.placeholder.com/300x400/6c757d/ffffff?text=No+Image';
+        const year = anime.year || 'Unknown';
+        const episodes = anime.total_episodes || '?';
+        const score = anime.score ? anime.score.toFixed(1) : 'N/A';
+        
+        col.innerHTML = `
+            <div class="anime-card p-3" data-mal-id="${anime.mal_id}">
+                <div class="text-center mb-2">
+                    <img src="${imageUrl}" alt="${anime.title}" class="anime-image">
+                </div>
+                <div class="anime-title mb-2">${anime.title}</div>
+                <div class="anime-info mb-2">
+                    <small class="d-block">Year: ${year}</small>
+                    <small class="d-block">Episodes: ${episodes}</small>
+                    <small class="d-block">Score: ${score}</small>
+                    ${anime.genre ? `<small class="d-block">Genre: ${anime.genre}</small>` : ''}
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="form-check">
+                        <input class="form-check-input anime-checkbox" type="checkbox" 
+                               data-mal-id="${anime.mal_id}">
+                        <label class="form-check-label">Select</label>
+                    </div>
+                    <button class="btn btn-sm btn-primary import-single" data-mal-id="${anime.mal_id}">
+                        Import
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        const checkbox = col.querySelector('.anime-checkbox');
+        const importBtn = col.querySelector('.import-single');
+        const card = col.querySelector('.anime-card');
+        
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectedAnime.add(anime.mal_id);
+                card.classList.add('selected');
+            } else {
+                selectedAnime.delete(anime.mal_id);
+                card.classList.remove('selected');
+            }
+            updateBulkImportButton();
+        });
+        
+        importBtn.addEventListener('click', () => importSingleAnime(anime.mal_id));
+        
+        return col;
+    }
+
+    function selectAll() {
+        document.querySelectorAll('.anime-checkbox').forEach(checkbox => {
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change'));
+        });
+    }
+
+    function clearSelection() {
+        document.querySelectorAll('.anime-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change'));
+        });
+    }
+
+    function updateBulkImportButton() {
+        bulkImportBtn.disabled = selectedAnime.size === 0;
+        bulkImportBtn.innerHTML = `<i class="bi bi-download"></i> Bulk Import Selected (${selectedAnime.size})`;
+    }
+
+    function importSingleAnime(malId) {
+        fetch(`/api/import/${malId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    // Update UI to show imported status
+                    const card = document.querySelector(`[data-mal-id="${malId}"]`);
+                    if (card) {
+                        const importBtn = card.querySelector('.import-single');
+                        importBtn.innerHTML = 'Imported';
+                        importBtn.disabled = true;
+                        importBtn.classList.remove('btn-primary');
+                        importBtn.classList.add('btn-success');
+                    }
+                } else {
+                    alert('Import failed: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Import failed: ' + error.message);
+            });
+    }
+
+    function performBulkImport() {
+        if (selectedAnime.size === 0) return;
+        
+        const modal = new bootstrap.Modal(document.getElementById('importModal'));
+        modal.show();
+        
+        const malIds = Array.from(selectedAnime);
+        
+        fetch('/admin/bulk-import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mal_ids: malIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayImportResults(data.results, data.summary);
+            } else {
+                throw new Error(data.error || 'Bulk import failed');
+            }
+        })
+        .catch(error => {
+            document.getElementById('importResults').innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> ${error.message}
+                </div>
+            `;
+        });
+    }
+
+    function displayImportResults(results, summary) {
+        let html = `
+            <div class="alert alert-info">
+                <strong>Import Summary:</strong><br>
+                Imported: ${summary.imported}<br>
+                Skipped: ${summary.skipped}<br>
+                Failed: ${summary.failed}
+            </div>
+        `;
+        
+        if (results.imported.length > 0) {
+            html += '<h6>Successfully Imported:</h6><ul>';
+            results.imported.forEach(item => {
+                html += `<li>${item.title} (ID: ${item.id})</li>`;
+            });
+            html += '</ul>';
+        }
+        
+        if (results.skipped.length > 0) {
+            html += '<h6>Skipped:</h6><ul>';
+            results.skipped.forEach(item => {
+                html += `<li>${item.title} - ${item.reason}</li>`;
+            });
+            html += '</ul>';
+        }
+        
+        if (results.failed.length > 0) {
+            html += '<h6>Failed:</h6><ul>';
+            results.failed.forEach(item => {
+                html += `<li>MAL ID ${item.mal_id} - ${item.reason}</li>`;
+            });
+            html += '</ul>';
+        }
+        
+        document.getElementById('importResults').innerHTML = html;
+        
+        // Update progress bar
+        const progressBar = document.querySelector('.progress-bar');
+        progressBar.style.width = '100%';
+        progressBar.classList.add('bg-success');
+    }
+
+    function showLoading() {
+        loadingIndicator.style.display = 'block';
+        resultsSection.style.display = 'none';
+    }
+
+    function hideLoading() {
+        loadingIndicator.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

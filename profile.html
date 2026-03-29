@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Anime Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-6"><i class="bi bi-person-circle"></i> {{ current_user.username }}'s Profile</h1>
+            <p class="lead text-muted">Member since {{ current_user.created_at.strftime('%B %Y') }}</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h2 class="card-title text-primary">{{ stats.total }}</h2>
+                    <p class="card-text">Total Anime</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h2 class="card-title text-success">{{ completed_count }}</h2>
+                    <p class="card-text">Completed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h2 class="card-title text-info">{{ total_episodes }}</h2>
+                    <p class="card-text">Episodes Watched</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h2 class="card-title text-warning">{{ avg_rating if avg_rating > 0 else 'N/A' }}</h2>
+                    <p class="card-text">Average Rating</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Watchlist Breakdown -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Watchlist Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-success">Watching:</span>
+                                <strong>{{ stats.watching }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-info">Completed:</span>
+                                <strong>{{ stats.completed }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-warning">On Hold:</span>
+                                <strong>{{ stats.on_hold }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-danger">Dropped:</span>
+                                <strong>{{ stats.dropped }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-secondary">Plan to Watch:</span>
+                                <strong>{{ stats.plan_to_watch }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Favorite Genres -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-heart"></i> Favorite Genres</h5>
+                </div>
+                <div class="card-body">
+                    {% if favorite_genres %}
+                        {% for genre, count in favorite_genres %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>{{ genre }}</span>
+                            <div>
+                                <span class="badge bg-primary">{{ count }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No genre data available yet. Complete or rate some anime to see your preferences!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_updates %}
+                        <div class="list-group list-group-flush">
+                            {% for item in recent_updates %}
+                            <div class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="ms-2 me-auto">
+                                    <div class="fw-bold">{{ item.anime.title }}</div>
+                                    <small class="text-muted">
+                                        Status: {{ item.status.replace('_', ' ').title() }}
+                                        {% if item.episodes_watched > 0 %}
+                                        | Episodes: {{ item.episodes_watched }}/{{ item.anime.total_episodes }}
+                                        {% endif %}
+                                        {% if item.rating %}
+                                        | Rating: {{ item.rating }}/10
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <small class="text-muted">{{ item.updated_at.strftime('%b %d') }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent activity. Start adding anime to your watchlist!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

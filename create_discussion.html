@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Start Discussion - {{ anime.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('browse') }}">Browse</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('anime_discussions', anime_id=anime.id) }}">{{ anime.title }} Discussions</a></li>
+                    <li class="breadcrumb-item active">Start Discussion</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">Start a New Discussion</h2>
+                    <p class="text-muted mb-0">About: <strong>{{ anime.title }}</strong></p>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Discussion Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   placeholder="Enter a descriptive title for your discussion" required>
+                            <div class="form-text">Choose a clear, descriptive title that summarizes your discussion topic.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Content *</label>
+                            <textarea class="form-control" id="content" name="content" rows="8" 
+                                      placeholder="Share your thoughts, questions, or theories..." required></textarea>
+                            <div class="form-text">Be respectful and constructive in your discussion.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_spoiler" name="is_spoiler">
+                                <label class="form-check-label" for="is_spoiler">
+                                    <i class="bi bi-exclamation-triangle text-warning"></i>
+                                    This discussion contains spoilers
+                                </label>
+                                <div class="form-text">Check this if your discussion reveals plot details that might spoil the experience for others.</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-chat-square-text"></i> Create Discussion
+                            </button>
+                            <a href="{{ url_for('anime_discussions', anime_id=anime.id) }}" 
+                               class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Community Guidelines -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Community Guidelines
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Be respectful and constructive in your discussions</li>
+                        <li>Mark spoilers appropriately to avoid ruining the experience for others</li>
+                        <li>Stay on topic and relevant to the anime/series</li>
+                        <li>No spam, harassment, or inappropriate content</li>
+                        <li>Use clear, descriptive titles for better discoverability</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-resize textarea
+    const textarea = document.getElementById('content');
+    textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+    });
+    
+    // Character counter for title
+    const titleInput = document.getElementById('title');
+    const maxTitleLength = 200;
+    
+    titleInput.addEventListener('input', function() {
+        const remaining = maxTitleLength - this.value.length;
+        let helpText = this.parentNode.querySelector('.form-text');
+        if (remaining < 20) {
+            helpText.textContent = `${remaining} characters remaining`;
+            helpText.className = remaining < 0 ? 'form-text text-danger' : 'form-text text-warning';
+        } else {
+            helpText.textContent = 'Choose a clear, descriptive title that summarizes your discussion topic.';
+            helpText.className = 'form-text';
+        }
+    });
+});
+</script>
+{% endblock %}
